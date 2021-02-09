@@ -30,7 +30,7 @@ class BM3D:
             Denoise self.img according to the algorithm described in the paper
         :return: 2d np array, same size as the input image
         """
-        for i, j in product(range(self.N), 2):
+        for i, j in product(range(self.N), [2]):
             group_x_R_th = self.grouping_from_noisy(i, j)
             tf_3d = self.transformation_3d(group_x_R_th)
 
