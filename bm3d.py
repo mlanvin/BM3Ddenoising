@@ -8,6 +8,8 @@ class BM3D:
         self.N = noisy_img.shape[0]
         self.N1_th = kwargs.get("N1_th")
         self.N1_wie = kwargs.get("N1_wie")
+        self.Ns = kwargs.get("Ns")
+        self.N_step = kwargs.get("N_step")
         self.sigma = kwargs.get("sigma")
         self.lambda_3d = kwargs.get("lambda_3d")
         self.lambda_2d = kwargs.get("lambda_2d")
@@ -60,16 +62,41 @@ class BM3D:
         return self.img_final_estimate
 
     def grouping_from_noisy(self, i, j):
-        # TODO
         # use self.img
         # don't forget to put the groups (ii, jj) in self.S_xR_ht[i, j]
-        pass
+        self.S_xR_ht[i, j] = []
+        N1 = self.N1_th
+        N_step = self.N_step
+        Ns = self.Ns
+        return self._grouping(i, j , N1, N_step, Ns)
 
     def grouping_from_basic_estimate(self, i, j):
         # TODO
         # use self.img_basic_estimate
         # don't forget to put the groups (ii, jj) in self.S_xR_wie[i, j]
-        pass
+        self.S_xR_wie[i, j] = []
+        N1 = self.N1_wie
+        N_step = self.N_step
+        Ns = self.Ns
+        return self._grouping(i, j , N1, N_step, Ns)
+
+    def _grouping(self, i, j, N1, N_step, Ns):
+        delta_x = (max(0, i - Ns), min(self.N, i + Ns))
+        delta_y = (max(0, j - Ns), min(self.N, j + Ns))
+        this_bloc = self.img[i:i + N1, j:j + N1]
+        for ii in range(delta_x[0], delta_x[1], N_step):
+            for jj in range(delta_y[0], delta_y[1], N_step):
+                if ii + N1 >= delta_x[1] or jj + N1 >= delta_y[1]:
+                    pass
+                bloc = self.img[ii:ii + N1, jj:jj + N1]
+                if self.bloc_similarity(bloc, this_bloc, N1) < self.tau_ht_match:
+                    self.S_xR_ht[i, j].append(bloc)
+        return np.array(self.S_xR_ht[i, j])
+
+    @staticmethod
+    def bloc_similarity(b1, b2, N):
+        norm = np.linalg.norm(b1 - b2)
+        return (norm / N) ** 2
 
     def transformation_3d(self, group):
         # TODO
@@ -119,6 +146,8 @@ class BM3D:
 params = {
     "N1_th": 4,
     "N1_wie": 4,
+    "Ns": 2,
+    "N_step": 4,
     "sigma": 2,
     "lambda_3d": 1,
     "lambda_2d": 1,
