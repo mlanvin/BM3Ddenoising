@@ -34,7 +34,7 @@ class BM3D:
         :return: 2d np array, same size as the input image
         """
 
-        ## Step 1 : Basic Estimate
+        # Step 1 : Basic Estimate
         for i, j in product(range(self.N), repeat=2):
             group_x_R_th = self.grouping_from_noisy(i, j)
             tf_3d = self.transformation_3d(group_x_R_th)
@@ -45,7 +45,7 @@ class BM3D:
 
         self.compute_y_basic()
 
-        ## Step 2 : Final Estimate
+        # Step 2 : Final Estimate
         for i, j in product(range(self.N), repeat=2):
             group_xR_noisy = self.grouping_from_noisy(i, j)
             group_xR_basic = self.grouping_from_basic_estimate(i, j)
@@ -70,7 +70,7 @@ class BM3D:
         N1 = self.N1_th
         N_step = self.N_step
         Ns = self.Ns
-        return self._grouping(i, j , N1, N_step, Ns)
+        return self._grouping(i, j, N1, N_step, Ns)
 
     def grouping_from_basic_estimate(self, i, j):
         # TODO
@@ -80,7 +80,7 @@ class BM3D:
         N1 = self.N1_wie
         N_step = self.N_step
         Ns = self.Ns
-        return self._grouping(i, j , N1, N_step, Ns)
+        return self._grouping(i, j, N1, N_step, Ns)
 
     def _grouping(self, i, j, N1, N_step, Ns):
         delta_x = (max(0, i - Ns), min(self.N, i + Ns))
@@ -140,8 +140,8 @@ class BM3D:
 
     def weight_th(self, thresholded, N_retained_values):
         # Formula (10)
-        if N_retained_values>=1:
-            w_ht_xR = 1/self.sigma**2*N_retained_values
+        if N_retained_values >= 1:
+            w_ht_xR = 1 / self.sigma ** 2 * N_retained_values
         else:
             w_ht_xR = 1
         return w_ht_xR
@@ -157,14 +157,25 @@ class BM3D:
             [float]: [Wiener Coefficient]
         """
         # Formula (11)
+
         wiener_coef_ij = (self.sigma * np.linalg.norm(self.wiener_energies_ij)) ** (-2)
+
         return wiener_coef_ij
 
     def compute_y_basic(self):
         # Formula (12)
-        # TODO
+        # WIP
         # self.img_basic_estimate = ...
-        pass
+        for i, j in product(range(self.N), repeat=2):
+            num = 0
+            denom = 0
+            for ii, jj in product(range(self.N), repeat=2):
+                if (i, j) in self.S_xR_ht[ii, jj]:
+                    num += self.w_th[ii, jj] * self.th_itf_3d[ii, jj, i, j]
+                    denom += self.w_th[ii, jj]
+                for iii, jjj in self.S_xR_ht[ii, jj]:
+
+            pass
 
     def compute_y_final(self):
         # Formula (12)
