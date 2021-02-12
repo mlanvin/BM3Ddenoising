@@ -26,7 +26,7 @@ class BM3D:
         self.S_xR_wie = np.empty((self.N, self.N))
         self.th_itf_3d = np.zeros((self.N, self.N, self.N1_th, self.N1_th))
         self.wie_itf_3d = np.zeros((self.N, self.N, self.N1_wie, self.N1_wie))
-        self.wiener_energies = np.zeros((self.N, self.N))
+        self.wiener_energies_ij = np.zeros((self.N1_wie, self.N1_wie))
 
     def denoise(self):
         """
@@ -53,7 +53,8 @@ class BM3D:
             tf_3d_noisy = self.transformation_3d(group_xR_noisy)
             tf_3d_basic = self.transformation_3d(group_xR_basic)
 
-            self.w_wie[i, j] = self.weight_wie(i, j, group_xR_basic)
+            self.compute_wiener_energy(group_xR_basic)
+            self.w_wie[i, j] = self.weight_wie(i, j)
 
             wienered = self.wiener_filter(tf_3d_noisy, i, j)
             self.wie_itf_3d[i, j, :, :] = self.itransformation_3d(wienered)
@@ -119,10 +120,23 @@ class BM3D:
         N_retained_values = np.sum(idx)
         return thresh, N_retained_values
 
+    def compute_wiener_energy(self, Yhat_basic_S_wie_xR):
+        """Compute Wiener Energy and store it in self.wiener_energies_ij
+
+        Args:
+            Yhat_basic_S_wie_xR ([array]): [Basic estimate of the block]
+        """
+        # Formula (8)
+        block_transform = self.transformation_3d(Yhat_basic_S_wie_xR)
+        t = np.abs(block_transform)**2
+        W_S_wie_xR = t/(t+self.sigma**2) 
+        self.wiener_energies_ij = W_S_wie_xR  # Store Result
+
     def wiener_filter(self, tf_3d, i, j):
-        # TODO
+        # Formula (9)
         # wiener energy is in self.wiener_energies[i, j]
-        pass
+        filtered = self.wiener_energies_ij * tf_3d
+        return filtered
 
     def weight_th(self, thresholded, N_retained_values):
         # Formula (10)
@@ -132,22 +146,18 @@ class BM3D:
             w_ht_xR = 1
         return w_ht_xR
 
-    def weight_wie(self, i, j, Yhat_basic_S_wie_xR):
+    def weight_wie(self, i, j):
         """Computes Wiener Coefficient of the basic estimate images for pixel (i,j)
 
         Args:
             i ([int]): [pixel index]
             j ([int]): [pixel index]
-            Yhat_basic_S_wie_xR ([array]): [Basic estimate of the block]
 
         Returns:
             [float]: [Wiener Coefficient]
         """
         # Formula (11)
-        block_transform = self.transformation_3d(Yhat_basic_S_wie_xR)
-        t = np.abs(block_transform)**2
-        W_S_wie_xR = t/(t+self.sigma**2)
-        wiener_coef_ij = (self.sigma * np.linalg.norm(W_S_wie_xR)) ** (-2)
+        wiener_coef_ij = (self.sigma * np.linalg.norm(self.wiener_energies_ij)) ** (-2)
         return wiener_coef_ij
 
     def compute_y_basic(self):
@@ -161,7 +171,6 @@ class BM3D:
         # TODO
         # self.img_final_estimate = ...
         pass
-
 
 params = {
     "N1_th": 4,
