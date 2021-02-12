@@ -31,17 +31,19 @@ class BM3D:
             Denoise self.img according to the algorithm described in the paper
         :return: 2d np array, same size as the input image
         """
+
+        ## Step 1 : Basic Estimate
         for i, j in product(range(self.N), repeat=2):
             group_x_R_th = self.grouping_from_noisy(i, j)
             tf_3d = self.transformation_3d(group_x_R_th)
 
-            thresholded = self.hard_threshold(tf_3d)
-            self.w_th[i, j] = self.weight_th(thresholded)
-
+            thresholded, N_xR_har = self.hard_threshold(tf_3d)
+            self.w_th[i, j] = self.weight_th(thresholded, N_xR_har)
             self.th_itf_3d[i, j, :, :] = self.itransformation_3d(thresholded)
 
         self.compute_y_basic()
 
+        ## Step 2 : Final Estimate
         for i, j in product(range(self.N), repeat=2):
             group_xR_noisy = self.grouping_from_noisy(i, j)
             group_xR_basic = self.grouping_from_basic_estimate(i, j)
@@ -49,7 +51,6 @@ class BM3D:
             tf_3d_noisy = self.transformation_3d(group_xR_noisy)
             tf_3d_basic = self.transformation_3d(group_xR_basic)
 
-            self.compute_wiener_energy(tf_3d_basic, i, j)
             self.w_wie[i, j] = self.weight_wie(i, j, group_xR_basic)
 
             wienered = self.wiener_filter(tf_3d_noisy, i, j)
@@ -88,17 +89,21 @@ class BM3D:
         idx = tf_3d < self.lambda_3d
         thresh = np.zeros(tf_3d.shape)
         thresh[idx] = tf_3d[idx]
-        return thresh
+        N_retained_values = np.sum(idx)
+        return thresh, N_retained_values
 
     def wiener_filter(self, tf_3d, i, j):
         # TODO
         # wiener energy is in self.wiener_energies[i, j]
         pass
 
-    def weight_th(self, thresholded):
+    def weight_th(self, thresholded, N_retained_values):
         # Formula (10)
-        # TODO
-        pass
+        if N_retained_values>=1:
+            w_ht_xR = 1/self.sigma**2*N_retained_values
+        else:
+            w_ht_xR = 1
+        return w_ht_xR
 
     def weight_wie(self, i, j, Yhat_basic_S_wie_xR):
         """Computes Wiener Coefficient of the basic estimate images for pixel (i,j)
@@ -128,11 +133,6 @@ class BM3D:
         # Formula (12)
         # TODO
         # self.img_final_estimate = ...
-        pass
-
-    def compute_wiener_energy(self, tf_3d_basic, i, j):
-        # Formula (8)
-        # TODO
         pass
 
 
