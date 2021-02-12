@@ -52,7 +52,7 @@ class BM3D:
             tf_3d_basic = self.transformation_3d(group_xR_basic)
 
             self.compute_wiener_energy(tf_3d_basic, i, j)
-            self.w_wie[i, j] = self.weight_wie(i, j)
+            self.w_wie[i, j] = self.weight_wie(i, j, group_xR_basic)
 
             wienered = self.wiener_filter(tf_3d_noisy, i, j)
             self.wie_itf_3d[i, j, :, :] = self.itransformation_3d(wienered)
@@ -107,8 +107,15 @@ class BM3D:
         pass
 
     def hard_threshold(self, tf_3d):
-        # TODO
-        pass
+        """Perform the hard thresholding
+
+        Args:
+            tf_3d ([array]): [array to threshold]
+        """
+        idx = tf_3d < self.lambda_3d
+        thresh = np.zeros(tf_3d.shape)
+        thresh[idx] = tf_3d[idx]
+        return thresh
 
     def wiener_filter(self, tf_3d, i, j):
         # TODO
@@ -120,10 +127,23 @@ class BM3D:
         # TODO
         pass
 
-    def weight_wie(self, i, j):
+    def weight_wie(self, i, j, Yhat_basic_S_wie_xR):
+        """Computes Wiener Coefficient of the basic estimate images for pixel (i,j)
+
+        Args:
+            i ([int]): [pixel index]
+            j ([int]): [pixel index]
+            Yhat_basic_S_wie_xR ([array]): [Basic estimate of the block]
+
+        Returns:
+            [float]: [Wiener Coefficient]
+        """
         # Formula (11)
-        # TODO
-        pass
+        block_transform = self.transformation_3d(Yhat_basic_S_wie_xR)
+        t = np.abs(block_transform)**2
+        W_S_wie_xR = t/(t+self.sigma**2)
+        wiener_coef_ij = (self.sigma * np.linalg.norm(W_S_wie_xR)) ** (-2)
+        return wiener_coef_ij
 
     def compute_y_basic(self):
         # Formula (12)
