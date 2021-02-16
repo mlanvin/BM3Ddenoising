@@ -2,12 +2,13 @@ from itertools import product
 import numpy as np
 import pywt
 
+
 class Group3d:
     def __init__(self, i_R, j_R, group_3d, bloc_coord, N_size):
         self.i_R = i_R
         self.j_R = j_R
         self.group_3d = group_3d
-        self.bloc_coord = bloc_coord # first one is (i_R, j_R)
+        self.bloc_coord = bloc_coord  # first one is (i_R, j_R)
         self.N_size = N_size
 
     def bloc(self, im, jm):
@@ -46,7 +47,7 @@ class BM3D:
         self.img_basic_estimate = np.zeros((self.N, self.N))
         self.img_final_estimate = np.zeros((self.N, self.N))
 
-        self.th_itf_3d = np.empty((self.N, self.N))   # list of Group3d
+        self.th_itf_3d = np.empty((self.N, self.N))  # list of Group3d
         self.wie_itf_3d = np.empty((self.N, self.N))  # list of Group3d
         self.wiener_energies = np.zeros((self.N, self.N))
 
@@ -62,8 +63,8 @@ class BM3D:
             tf_3d = self.transformation_3d(group_x_R_th)
 
             thresholded, N_xR_har = self.hard_threshold(tf_3d)
-            self.w_th[i, j] = self.weight_th(thresholded, N_xR_har)
-            self.th_itf_3d[i, j] = Group3d(i, j, self.itransformation_3d(thresholded), bloc_coord)
+            self.w_th[i, j] = self.weight_th(N_xR_har)
+            self.th_itf_3d[i, j] = Group3d(i, j, self.itransformation_3d(thresholded), bloc_coord, self.N1_th)
 
         self.compute_y_basic()
 
@@ -79,7 +80,7 @@ class BM3D:
             self.w_wie[i, j] = self.weight_wie(i, j)
 
             wienered = self.wiener_filter(tf_3d_noisy, i, j)
-            self.wie_itf_3d[i, j] = Group3d(i, j, self.itransformation_3d(wienered), bloc_coord_basic)
+            self.wie_itf_3d[i, j] = Group3d(i, j, self.itransformation_3d(wienered), bloc_coord_basic, self.N1_wie)
 
         self.compute_y_final()
 
@@ -123,11 +124,13 @@ class BM3D:
         norm = np.linalg.norm(b1 - b2)
         return (norm / N) ** 2
 
-    def transformation_3d(self, group):
-        return(pywt.dwtn(group, 'bior1.5'))
+    @staticmethod
+    def transformation_3d(group):
+        return pywt.dwtn(group, 'bior1.5')
 
-    def itransformation_3d(self, group):
-        return(pywt.idwtn(group, 'bior1.5'))
+    @staticmethod
+    def itransformation_3d(group):
+        return pywt.idwtn(group, 'bior1.5')
 
     def hard_threshold_direction(self, tf_3d_direction):
         idx = tf_3d_direction < self.lambda_3d
@@ -147,7 +150,7 @@ class BM3D:
             tf_3d[key], N_retained_values_direction = self.hard_threshold_direction(tf_3d_direction)
             N_retained_values += N_retained_values_direction
         return tf_3d, N_retained_values
-    
+
     def compute_wiener_energy(self, i, j, Yhat_basic_S_wie_xR):
         """Compute Wiener Energy and store it in self.wiener_energies_ij
 
@@ -156,9 +159,9 @@ class BM3D:
         """
         # Formula (8)
         block_transform = self.transformation_3d(Yhat_basic_S_wie_xR)
-        t = np.abs(block_transform)**2
-        W_S_wie_xR = t/(t+self.sigma**2) 
-        self.wiener_energies[i,j] = W_S_wie_xR  # Store Result
+        t = np.abs(block_transform) ** 2
+        W_S_wie_xR = t / (t + self.sigma ** 2)
+        self.wiener_energies[i, j] = W_S_wie_xR  # Store Result
 
     def wiener_filter(self, tf_3d, i, j):
         # Formula (9)
@@ -166,7 +169,7 @@ class BM3D:
         filtered = self.wiener_energies[i, j] * tf_3d
         return filtered
 
-    def weight_th(self, thresholded, N_retained_values):
+    def weight_th(self, N_retained_values):
         # Formula (10)
         if N_retained_values >= 1:
             w_ht_xR = 1 / self.sigma ** 2 * N_retained_values
@@ -186,9 +189,9 @@ class BM3D:
         """
         # Formula (11)
 
-        wiener_coef_ij = (self.sigma * np.linalg.norm(self.wiener_energies_ij)) ** (-2)
+        wiener_coeff_ij = (self.sigma * np.linalg.norm(self.wiener_energies[i, j])) ** (-2)
 
-        return wiener_coef_ij
+        return wiener_coeff_ij
 
     def compute_y_basic(self):
         # Formula (12)
@@ -235,4 +238,4 @@ params = {
 }
 
 denoiser = BM3D(np.zeros((16, 16)), **params)
-img_denoised = denoiser.denoise()
+img_denoised = denoiser.denoise
