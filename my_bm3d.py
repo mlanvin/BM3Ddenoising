@@ -71,7 +71,7 @@ class BM3D:
             thresholded, N_xR_har = self.hard_threshold(tf_3d)
 
             self.w_th[i, j] = self.weight_th(N_xR_har)
-            
+
             itf_3d = self.itransformation_3d(thresholded)
             self.th_itf_3d[i, j] = Group3d(i, j, itf_3d, bloc_coord, self.N1_th)
         print("loop1_done")
