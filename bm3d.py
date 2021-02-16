@@ -174,6 +174,7 @@ class BM3D:
                     num += self.w_th[ii, jj] * self.th_itf_3d[ii, jj, i, j]
                     denom += self.w_th[ii, jj]
                 for iii, jjj in self.S_xR_ht[ii, jj]:
+                    pass
 
             pass
 
