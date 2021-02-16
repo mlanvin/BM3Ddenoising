@@ -23,13 +23,13 @@ class Group3d:
         N = self.N_size
         for k, (ii, jj) in enumerate(self.bloc_coord):
             if ii <= i < ii + N and jj <= j < jj + N:
-                values.append(self.group_3d[i, j, k])
+                # print(self.group_3d.shape, len(self.bloc_coord))
+                values.append(self.group_3d[i - ii, j - jj, k])
         return values
 
 
 class BM3D:
     def __init__(self, noisy_img, **kwargs):
-        self.img = noisy_img
         self.N = noisy_img.shape[0]
         self.N1_th = kwargs.get("N1_th")
         self.N1_wie = kwargs.get("N1_wie")
@@ -47,9 +47,15 @@ class BM3D:
         self.img_basic_estimate = np.zeros((self.N, self.N))
         self.img_final_estimate = np.zeros((self.N, self.N))
 
-        self.th_itf_3d = np.empty((self.N, self.N))  # list of Group3d
-        self.wie_itf_3d = np.empty((self.N, self.N))  # list of Group3d
+        self.th_itf_3d = np.empty((self.N, self.N), dtype=object)  # list of Group3d
+        self.wie_itf_3d = np.empty((self.N, self.N), dtype=object)  # list of Group3d
         self.wiener_energies = np.zeros((self.N, self.N))
+
+        # padding :
+        self.pad_w = max(self.N1_wie, self.N1_th)
+        N_ = self.N + self.pad_w
+        self.img = np.zeros((N_, N_))
+        self.img[:noisy_img.shape[0], :noisy_img.shape[1]] = noisy_img
 
     def denoise(self):
         """
@@ -60,12 +66,15 @@ class BM3D:
         # Step 1 : Basic Estimate
         for i, j in product(range(self.N), repeat=2):
             group_x_R_th, bloc_coord = self.grouping_from_noisy(i, j)
+
             tf_3d = self.transformation_3d(group_x_R_th)
-
             thresholded, N_xR_har = self.hard_threshold(tf_3d)
-            self.w_th[i, j] = self.weight_th(N_xR_har)
-            self.th_itf_3d[i, j] = Group3d(i, j, self.itransformation_3d(thresholded), bloc_coord, self.N1_th)
 
+            self.w_th[i, j] = self.weight_th(N_xR_har)
+            
+            itf_3d = self.itransformation_3d(thresholded)
+            self.th_itf_3d[i, j] = Group3d(i, j, itf_3d, bloc_coord, self.N1_th)
+        print("loop1_done")
         self.compute_y_basic()
 
         # Step 2 : Final Estimate
@@ -84,36 +93,33 @@ class BM3D:
 
         self.compute_y_final()
 
-        return self.img_final_estimate
+        return self.img_final_estimate[:self.N - self.pad_w, :self.N - self.pad_w]
 
     def grouping_from_noisy(self, i, j):
         # use self.img
-        # don't forget to put the groups (ii, jj) in self.S_xR_ht[i, j]
         N1 = self.N1_th
         N_step = self.N_step
         Ns = self.Ns
-        return self._grouping(i, j, N1, N_step, Ns)
+        return self._grouping(i, j, N1, N_step, Ns, self.img)
 
     def grouping_from_basic_estimate(self, i, j):
-        # TODO
         # use self.img_basic_estimate
-        # don't forget to put the groups (ii, jj) in self.S_xR_wie[i, j]
         N1 = self.N1_wie
         N_step = self.N_step
         Ns = self.Ns
-        return self._grouping(i, j, N1, N_step, Ns)
+        return self._grouping(i, j, N1, N_step, Ns, self.img_basic_estimate)
 
-    def _grouping(self, i, j, N1, N_step, Ns):
+    def _grouping(self, i, j, N1, N_step, Ns, img):
         S_xR = []
         bloc_coord = []
         delta_x = (max(0, i - Ns), min(self.N, i + Ns))
         delta_y = (max(0, j - Ns), min(self.N, j + Ns))
-        this_bloc = self.img[i:i + N1, j:j + N1]
+        this_bloc = img[i:i + N1, j:j + N1]
         for ii in range(delta_x[0], delta_x[1], N_step):
             for jj in range(delta_y[0], delta_y[1], N_step):
                 if ii + N1 >= delta_x[1] or jj + N1 >= delta_y[1]:
-                    pass
-                bloc = self.img[ii:ii + N1, jj:jj + N1]
+                    continue
+                bloc = img[ii:ii + N1, jj:jj + N1]
                 if self.bloc_similarity(bloc, this_bloc, N1) < self.tau_ht_match:
                     S_xR.append(bloc)
                     bloc_coord.append((ii, jj))
@@ -222,7 +228,7 @@ class BM3D:
                 denom += self.w_wie[ii, jj] * len(values)
 
             if denom != 0:
-                self.img_basic_estimate[i, j] = num / denom
+                self.img_final_estimate[i, j] = num / denom
 
 
 params = {
@@ -236,6 +242,3 @@ params = {
     "tau_ht_match": 1,
     "tau_wie_match": 1
 }
-
-denoiser = BM3D(np.zeros((16, 16)), **params)
-img_denoised = denoiser.denoise
