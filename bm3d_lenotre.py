@@ -1,6 +1,6 @@
 from itertools import product
 import numpy as np
-
+import pywt
 
 class Group3d:
     def __init__(self, i_R, j_R, group_3d, bloc_coord, N_size):
@@ -123,26 +123,31 @@ class BM3D:
         norm = np.linalg.norm(b1 - b2)
         return (norm / N) ** 2
 
-    def transformation_3d(self, group):
-        # TODO
-        pass
+def transformation_3d(self, group):
+    return(pywt.dwtn(group, 'bior1.5'))
 
-    def itransformation_3d(self, group):
-        # TODO
-        pass
+def itransformation_3d(self, group):
+    return(pywt.idwtn(group, 'bior1.5'))
 
-    def hard_threshold(self, tf_3d):
-        """Perform the hard thresholding
+def hard_threshold_direction(self, tf_3d_direction):
+    idx = tf_3d_direction < self.lambda_3d
+    thresh = np.zeros(tf_3d_direction.shape)
+    thresh[idx] = tf_3d_direction[idx]
+    N_retained_values_direction = np.sum(idx)
+    return thresh, N_retained_values_direction
 
-        Args:
-            tf_3d ([array]): [array to threshold]
-        """
-        idx = tf_3d < self.lambda_3d
-        thresh = np.zeros(tf_3d.shape)
-        thresh[idx] = tf_3d[idx]
-        N_retained_values = np.sum(idx)
-        return thresh, N_retained_values
+def hard_threshold(self, tf_3d):
+    """Perform the hard thresholding
 
+    Args:
+        tf_3d ([array]): [array to threshold]
+    """
+    N_retained_values = 0
+    for key, tf_3d_direction in tf_3d.items():
+        tf_3d[key], N_retained_values_direction = hard_threshold_direction(tf_3d_direction)
+        N_retained_values += N_retained_values_direction
+    return tf_3d, N_retained_values
+    
     def compute_wiener_energy(self, i, j, Yhat_basic_S_wie_xR):
         """Compute Wiener Energy and store it in self.wiener_energies_ij
 
