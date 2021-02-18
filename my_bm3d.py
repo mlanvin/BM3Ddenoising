@@ -59,6 +59,8 @@ class BM3D:
         self.img_basic_estimate = np.zeros((N_, N_))
         self.img_final_estimate = np.zeros((self.N, self.N))
 
+        self.stat_bloc_similar = np.zeros((self.N, self.N))
+
     def denoise(self):
         """
             Denoise self.img according to the algorithm described in the paper
@@ -77,6 +79,7 @@ class BM3D:
             itf_3d = self.itransformation_3d(thresholded)
             self.th_itf_3d[i, j] = Group3d(i, j, itf_3d, bloc_coord, self.N1_th)
 
+        print(self.stat_bloc_similar)
         self.compute_y_basic()
 
         # Step 2 : Final Estimate
@@ -133,12 +136,15 @@ class BM3D:
             S_xR.append(this_bloc)
             bloc_coord.append((i, j))
 
+        self.stat_bloc_similar[i, j] = len(bloc_coord)
+
         return S_xR, bloc_coord
 
     @staticmethod
     def bloc_similarity(b1, b2, N):
         norm = np.linalg.norm(b1 - b2)
-        return (norm / N) ** 2
+        val = (norm / N) ** 2
+        return val
 
     @staticmethod
     def transformation_3d(group):
