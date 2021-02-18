@@ -4,6 +4,7 @@ import pywt
 import tqdm
 from scipy.fft import fftn, ifftn
 
+
 class Group3d:
     def __init__(self, i_R, j_R, group_3d, bloc_coord, N_size):
         self.i_R = i_R
@@ -45,9 +46,6 @@ class BM3D:
         self.w_th = np.zeros((self.N, self.N))
         self.w_wie = np.zeros((self.N, self.N))
 
-        self.img_basic_estimate = np.zeros((self.N, self.N))
-        self.img_final_estimate = np.zeros((self.N, self.N))
-
         self.th_itf_3d = np.empty((self.N, self.N), dtype=object)  # list of Group3d
         self.wie_itf_3d = np.empty((self.N, self.N), dtype=object)  # list of Group3d
         self.wiener_energies = np.zeros((self.N, self.N), dtype=object)
@@ -57,6 +55,9 @@ class BM3D:
         N_ = self.N + self.pad_w
         self.img = np.zeros((N_, N_))
         self.img[:noisy_img.shape[0], :noisy_img.shape[1]] = noisy_img
+
+        self.img_basic_estimate = np.zeros((N_, N_))
+        self.img_final_estimate = np.zeros((self.N, self.N))
 
     def denoise(self):
         """
@@ -116,6 +117,7 @@ class BM3D:
         delta_x = (max(0, i - Ns), min(self.N, i + Ns))
         delta_y = (max(0, j - Ns), min(self.N, j + Ns))
         this_bloc = img[i:i + N1, j:j + N1]
+
         for ii in range(delta_x[0], delta_x[1], N_step):
             for jj in range(delta_y[0], delta_y[1], N_step):
                 if ii + N1 >= delta_x[1] or jj + N1 >= delta_y[1]:
@@ -207,6 +209,7 @@ class BM3D:
     def compute_y_basic(self):
         # Formula (12)
         # self.img_basic_estimate = ...
+        img = np.zeros((self.N, self.N))
         for i, j in tqdm.tqdm(product(range(self.N), repeat=2)):
             num = 0
             denom = 0
@@ -217,7 +220,10 @@ class BM3D:
                 denom += self.w_th[ii, jj] * len(values)
 
             if denom != 0:
-                self.img_basic_estimate[i, j] = num / denom
+                img[i, j] = num / denom
+
+        # padding :
+        self.img_basic_estimate[:img.shape[0], :img.shape[1]] = img
 
     def compute_y_final(self):
         # Formula (12)
