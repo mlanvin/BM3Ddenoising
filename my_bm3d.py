@@ -1,7 +1,8 @@
 from itertools import product
 import numpy as np
 import pywt
-
+import tqdm
+from scipy.fft import fftn, ifftn
 
 class Group3d:
     def __init__(self, i_R, j_R, group_3d, bloc_coord, N_size):
@@ -24,7 +25,7 @@ class Group3d:
         for k, (ii, jj) in enumerate(self.bloc_coord):
             if ii <= i < ii + N and jj <= j < jj + N:
                 # print(self.group_3d.shape, len(self.bloc_coord))
-                values.append(self.group_3d[i - ii, j - jj, k])
+                values.append(self.group_3d[k, i - ii, j - jj])
         return values
 
 
@@ -49,7 +50,7 @@ class BM3D:
 
         self.th_itf_3d = np.empty((self.N, self.N), dtype=object)  # list of Group3d
         self.wie_itf_3d = np.empty((self.N, self.N), dtype=object)  # list of Group3d
-        self.wiener_energies = np.zeros((self.N, self.N))
+        self.wiener_energies = np.zeros((self.N, self.N), dtype=object)
 
         # padding :
         self.pad_w = max(self.N1_wie, self.N1_th)
@@ -74,7 +75,7 @@ class BM3D:
 
             itf_3d = self.itransformation_3d(thresholded)
             self.th_itf_3d[i, j] = Group3d(i, j, itf_3d, bloc_coord, self.N1_th)
-        print("loop1_done")
+
         self.compute_y_basic()
 
         # Step 2 : Final Estimate
@@ -85,7 +86,7 @@ class BM3D:
             tf_3d_noisy = self.transformation_3d(group_xR_noisy)
             tf_3d_basic = self.transformation_3d(group_xR_basic)
 
-            self.compute_wiener_energy(i, j, group_xR_basic)
+            self.compute_wiener_energy(i, j, tf_3d_basic)
             self.w_wie[i, j] = self.weight_wie(i, j)
 
             wienered = self.wiener_filter(tf_3d_noisy, i, j)
@@ -132,11 +133,13 @@ class BM3D:
 
     @staticmethod
     def transformation_3d(group):
-        return pywt.dwtn(group, 'bior1.5')
+        # return pywt.dwtn(group, 'bior1.5')
+        return fftn(group)
 
     @staticmethod
     def itransformation_3d(group):
-        return pywt.idwtn(group, 'bior1.5')
+        # return pywt.idwtn(group, 'bior1.5')
+        return ifftn(group)
 
     def hard_threshold_direction(self, tf_3d_direction):
         idx = tf_3d_direction < self.lambda_3d
@@ -152,20 +155,22 @@ class BM3D:
             tf_3d ([array]): [array to threshold]
         """
         N_retained_values = 0
-        for key, tf_3d_direction in tf_3d.items():
-            tf_3d[key], N_retained_values_direction = self.hard_threshold_direction(tf_3d_direction)
-            N_retained_values += N_retained_values_direction
+        tf_3d, N_retained_values_direction = self.hard_threshold_direction(tf_3d)
+        # for key, tf_3d_direction in tf_3d.items():
+        #     tf_3d[key], N_retained_values_direction = self.hard_threshold_direction(tf_3d_direction)
+        #     N_retained_values += N_retained_values_direction
         return tf_3d, N_retained_values
 
-    def compute_wiener_energy(self, i, j, Yhat_basic_S_wie_xR):
+    def compute_wiener_energy(self, i, j, tf_3d_basic):
         """Compute Wiener Energy and store it in self.wiener_energies_ij
 
         Args:
-            Yhat_basic_S_wie_xR ([array]): [Basic estimate of the block]
+            :param j:
+            :param i:
+            :param tf_3d_basic:
         """
         # Formula (8)
-        block_transform = self.transformation_3d(Yhat_basic_S_wie_xR)
-        t = np.abs(block_transform) ** 2
+        t = np.abs(tf_3d_basic) ** 2
         W_S_wie_xR = t / (t + self.sigma ** 2)
         self.wiener_energies[i, j] = W_S_wie_xR  # Store Result
 
@@ -202,7 +207,7 @@ class BM3D:
     def compute_y_basic(self):
         # Formula (12)
         # self.img_basic_estimate = ...
-        for i, j in product(range(self.N), repeat=2):
+        for i, j in tqdm.tqdm(product(range(self.N), repeat=2)):
             num = 0
             denom = 0
             for ii, jj in product(range(self.N), repeat=2):
