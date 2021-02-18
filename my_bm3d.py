@@ -102,16 +102,18 @@ class BM3D:
         N1 = self.N1_th
         N_step = self.N_step
         Ns = self.Ns
-        return self._grouping(i, j, N1, N_step, Ns, self.img)
+        tau = self.tau_ht_match
+        return self._grouping(i, j, N1, N_step, Ns, self.img, tau)
 
     def grouping_from_basic_estimate(self, i, j):
         # use self.img_basic_estimate
         N1 = self.N1_wie
         N_step = self.N_step
         Ns = self.Ns
-        return self._grouping(i, j, N1, N_step, Ns, self.img_basic_estimate)
+        tau = self.tau_wie_match
+        return self._grouping(i, j, N1, N_step, Ns, self.img_basic_estimate, tau)
 
-    def _grouping(self, i, j, N1, N_step, Ns, img):
+    def _grouping(self, i, j, N1, N_step, Ns, img, tau):
         S_xR = []
         bloc_coord = []
         delta_x = (max(0, i - Ns), min(self.N, i + Ns))
@@ -123,9 +125,14 @@ class BM3D:
                 if ii + N1 >= delta_x[1] or jj + N1 >= delta_y[1]:
                     continue
                 bloc = img[ii:ii + N1, jj:jj + N1]
-                if self.bloc_similarity(bloc, this_bloc, N1) < self.tau_ht_match:
+                if self.bloc_similarity(bloc, this_bloc, N1) < tau:
                     S_xR.append(bloc)
                     bloc_coord.append((ii, jj))
+
+        if (i, j) not in bloc_coord:
+            S_xR.append(this_bloc)
+            bloc_coord.append((i, j))
+
         return S_xR, bloc_coord
 
     @staticmethod
@@ -229,7 +236,7 @@ class BM3D:
         # Formula (12)
         # TODO
         # self.img_final_estimate = ...
-        for i, j in product(range(self.N), repeat=2):
+        for i, j in tqdm.tqdm(product(range(self.N), repeat=2)):
             num = 0
             denom = 0
             for ii, jj in product(range(self.N), repeat=2):
