@@ -187,12 +187,12 @@ class BM3D:
         # Formula (8)
         t = np.abs(tf_3d_basic) ** 2
         W_S_wie_xR = t / (t + self.sigma ** 2)
-        self.wiener_energies[i, j] = W_S_wie_xR  # Store Result
+        self.wiener_energies[i, j] = np.mean(W_S_wie_xR, axis=0)  # Store Result
 
     def wiener_filter(self, tf_3d, i, j):
         # Formula (9)
         # wiener energy is in self.wiener_energies[i, j]
-        filtered = self.wiener_energies[i, j] * tf_3d
+        filtered = np.array([self.wiener_energies[i, j] * slice_2d for slice_2d in tf_3d])
         return filtered
 
     def weight_th(self, N_retained_values):
