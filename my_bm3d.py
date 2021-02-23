@@ -159,7 +159,9 @@ class BM3D:
         return ifftn(group)
 
     def hard_threshold_direction(self, tf_3d_direction):
-        idx = tf_3d_direction < self.lambda_3d
+        # print("Le seuil est à ", self.lambda_3d)
+        # print("Les valeurs sont à ", np.unique(np.abs(tf_3d_direction)))
+        idx = np.abs(tf_3d_direction) < self.lambda_3d
         thresh = np.zeros(tf_3d_direction.shape)
         thresh[idx] = tf_3d_direction[idx]
         N_retained_values_direction = np.sum(idx)
@@ -235,7 +237,7 @@ class BM3D:
                 denom += self.w_th[ii, jj] * len(values)
 
             if denom != 0:
-                img[i, j] = num / denom
+                img[i, j] = np.abs(num / denom)
 
         # padding :
         self.img_basic_estimate[:img.shape[0], :img.shape[1]] = img
@@ -254,7 +256,7 @@ class BM3D:
                 denom += self.w_wie[ii, jj] * len(values)
 
             if denom != 0:
-                self.img_final_estimate[i, j] = num / denom
+                self.img_final_estimate[i, j] = np.abs(num / denom)
 
 
 params = {
