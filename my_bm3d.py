@@ -24,6 +24,8 @@ class Group3d:
         values = []
         N = self.N_size
         for k, (ii, jj) in enumerate(self.bloc_coord):
+            if k >= self.group_3d.shape[0]:
+                continue
             if ii <= i < ii + N and jj <= j < jj + N:
                 # print(self.group_3d.shape, len(self.bloc_coord))
                 values.append(self.group_3d[k, i - ii, j - jj])
