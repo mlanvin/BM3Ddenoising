@@ -100,7 +100,7 @@ class BM3D:
 
         self.compute_y_final()
 
-        return self.img_final_estimate[:self.N - self.pad_w, :self.N - self.pad_w]
+        return self.img_final_estimate
 
     def grouping_from_noisy(self, i, j):
         # use self.img
