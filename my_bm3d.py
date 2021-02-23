@@ -81,7 +81,7 @@ class BM3D:
             itf_3d = self.itransformation_3d(thresholded)
             self.th_itf_3d[i, j] = Group3d(i, j, itf_3d, bloc_coord, self.N1_th)
 
-        print(self.stat_bloc_similar)
+        # print(self.stat_bloc_similar)
         self.compute_y_basic()
 
         # Step 2 : Final Estimate
